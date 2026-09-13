@@ -114,3 +114,7 @@ eaglercraftBuild {
 		}
 	}
 }
+
+tasks.named<org.teavm.gradle.tasks.TeaVMTask>("generateWasmGC") {
+    classpath.from(files("../externalMods/classes"))
+}
