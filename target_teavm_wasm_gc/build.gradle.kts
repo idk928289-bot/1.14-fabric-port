@@ -119,3 +119,10 @@ tasks.named<org.teavm.gradle.tasks.TeaVMTask>("generateWasmGC") {
         include("*.jar")
     })
 }
+
+tasks.register<JavaExec>("scanMods") {
+    group = "fabric"
+    description = "Scan mods directory for Fabric mod metadata."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("net.lax1dude.eaglercraft.fabric.loader.ModJarScanner")
+}
