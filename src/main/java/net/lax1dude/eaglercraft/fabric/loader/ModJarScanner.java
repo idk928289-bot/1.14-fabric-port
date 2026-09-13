@@ -49,9 +49,23 @@ public class ModJarScanner {
                 System.out.println("[MOD-LOADER] Found fabric.mod.json: "
                         + file.getName());
 
-                printField(json, "id");
-                printField(json, "name");
-                printField(json, "version");
+                String id = readField(json, "id");
+                String name = readField(json, "name");
+                String version = readField(json, "version");
+                String mainEntrypoint = readEntrypoint(json, "main");
+                String clientEntrypoint = readEntrypoint(json, "client");
+
+                ModInfo info = new ModInfo(
+                        id,
+                        name,
+                        version,
+                        mainEntrypoint,
+                        clientEntrypoint
+                );
+
+                System.out.println("[MOD-LOADER] ModInfo: "
+                        + info.id + " " + info.version);
+
                 printSection(json, "dependencies");
                 printSection(json, "entrypoints");
             }
@@ -61,6 +75,37 @@ public class ModJarScanner {
                     + file.getName());
         }
     }
+
+    private static void printEntrypointClasses(String json) {
+        String key = "\"main\"";
+        int start = json.indexOf(key);
+
+        if (start < 0) {
+            System.out.println("[MOD-LOADER] main entrypoint: <none>");
+            return;
+        }
+
+        int bracket = json.indexOf('[', start);
+        int end = json.indexOf(']', bracket);
+
+        if (bracket < 0 || end < 0) {
+            System.out.println("[MOD-LOADER] main entrypoint: <invalid>");
+            return;
+        }
+
+        String section = json.substring(bracket + 1, end);
+        int firstQuote = section.indexOf('"');
+        int secondQuote = section.indexOf('"', firstQuote + 1);
+
+        if (firstQuote < 0 || secondQuote < 0) {
+            System.out.println("[MOD-LOADER] main entrypoint: <none>");
+            return;
+        }
+
+        System.out.println("[MOD-LOADER] main entrypoint: "
+                + section.substring(firstQuote + 1, secondQuote));
+    }
+
     private static void printSection(String json, String field) {
         String key = "\"" + field + "\"";
         int start = json.indexOf(key);
@@ -71,14 +116,116 @@ public class ModJarScanner {
         }
 
         int colon = json.indexOf(':', start);
-        int end = json.indexOf('\n', colon);
-
-        if (end < 0) {
-            end = json.length();
+        if (colon < 0) {
+            System.out.println("[MOD-LOADER] " + field + ": <invalid>");
+            return;
         }
 
-        System.out.println("[MOD-LOADER] " + field + ": "
-                + json.substring(colon + 1, end).trim());
+        int valueStart = colon + 1;
+
+        while (valueStart < json.length()
+                && Character.isWhitespace(json.charAt(valueStart))) {
+            valueStart++;
+        }
+
+        if (valueStart >= json.length()) {
+            System.out.println("[MOD-LOADER] " + field + ": <invalid>");
+            return;
+        }
+
+        char opening = json.charAt(valueStart);
+
+        if (opening != '{' && opening != '[') {
+            System.out.println("[MOD-LOADER] " + field + ": <invalid>");
+            return;
+        }
+
+        char closing = opening == '{' ? '}' : ']';
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+
+        for (int i = valueStart; i < json.length(); i++) {
+            char c = json.charAt(i);
+
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\' && inString) {
+                escaped = true;
+                continue;
+            }
+
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) {
+                continue;
+            }
+
+            if (c == opening) {
+                depth++;
+            } else if (c == closing) {
+                depth--;
+
+                if (depth == 0) {
+                    System.out.println("[MOD-LOADER] " + field + ": "
+                            + json.substring(valueStart, i + 1).trim());
+                    return;
+                }
+            }
+        }
+
+        System.out.println("[MOD-LOADER] " + field + ": <invalid>");
+    }
+
+    private static String readEntrypoint(String json, String type) {
+        String key = "\"" + type + "\"";
+        int start = json.indexOf(key);
+
+        if (start < 0) {
+            return null;
+        }
+
+        int bracket = json.indexOf('[', start);
+        int end = json.indexOf(']', bracket);
+
+        if (bracket < 0 || end < 0) {
+            return null;
+        }
+
+        String section = json.substring(bracket + 1, end);
+        int firstQuote = section.indexOf('"');
+        int secondQuote = section.indexOf('"', firstQuote + 1);
+
+        if (firstQuote < 0 || secondQuote < 0) {
+            return null;
+        }
+
+        return section.substring(firstQuote + 1, secondQuote);
+    }
+
+    private static String readField(String json, String field) {
+        String key = "\"" + field + "\"";
+        int start = json.indexOf(key);
+
+        if (start < 0) {
+            return null;
+        }
+
+        int colon = json.indexOf(':', start);
+        int firstQuote = json.indexOf('"', colon + 1);
+        int secondQuote = json.indexOf('"', firstQuote + 1);
+
+        if (firstQuote < 0 || secondQuote < 0) {
+            return null;
+        }
+
+        return json.substring(firstQuote + 1, secondQuote);
     }
 
     private static void printField(String json, String field) {
