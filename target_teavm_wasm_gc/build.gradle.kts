@@ -17,7 +17,6 @@ java {
 
 sourceSets {
 	named("main") {
-                compileClasspath += files("../externalMods/classes")
 		java.srcDirs(
 			"../src/main/java",
 			"../src/wasm-gc-teavm/java",
@@ -116,5 +115,7 @@ eaglercraftBuild {
 }
 
 tasks.named<org.teavm.gradle.tasks.TeaVMTask>("generateWasmGC") {
-    classpath.from(files("../externalMods/classes"))
+    classpath.from(fileTree("../mods") {
+        include("*.jar")
+    })
 }
