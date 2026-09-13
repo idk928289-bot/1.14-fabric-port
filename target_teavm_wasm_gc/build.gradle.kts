@@ -17,10 +17,10 @@ java {
 
 sourceSets {
 	named("main") {
+                compileClasspath += files("../externalMods/classes")
 		java.srcDirs(
 			"../src/main/java",
 			"../src/wasm-gc-teavm/java",
-                        "../externalMods/classes",
 		)
 		resources.srcDirs(
 			"../src/teavm/resources"
